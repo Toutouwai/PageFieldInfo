@@ -33,7 +33,7 @@ In the Input tab of the settings for a Page Reference field...
 
 * Tick the "Add info tooltips to options" checkbox to enable tooltips for the options in the field. Tooltips are not possible for Select or AsmSelect inputfield types so for those types you would want to tick the next option.
 * Tick the "Append info about selected options" checkbox to append information about the selected options to the bottom of the inputfield. If the Page Reference field is a "multiple pages" field then the info for each selected option will be prefixed with the option label (so the user will know what option each line of info relates to).
-* In the "Info field" dropdown select a text field that will contain information about the page, to be used in the tooltips and appended info. Of course this field should be in the template(s) of the selectable pages for the Page Reference field.
+* In the "Info field" dropdown select a text/textarea field that will contain information about the page, to be used in the tooltips and appended info. Of course this field should be in the template(s) of the selectable pages for the Page Reference field.
 
 ### Hook
 

@@ -24,7 +24,7 @@ class PageFieldInfo extends WireData implements Module {
 		return array(
 			'title' => 'Page Field Info',
 			'summary' => 'Adds information about options in Page Reference fields.',
-			'version' => '0.1.0',
+			'version' => '0.1.1',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/PageFieldInfo',
 			'icon' => 'info',
@@ -191,8 +191,8 @@ class PageFieldInfo extends WireData implements Module {
 		$f_name = 'info_field';
 		$f->name = $f_name;
 		$f->label = $this->_('Info field');
-		$f->description = $this->_('Text field that will contain information about the page.');
-		$text_fields = $this->wire('fields')->find('type=FieldtypeText');
+		$f->description = $this->_('Field that will contain information about the page.');
+		$text_fields = $this->wire('fields')->find('type=FieldtypeText|FieldtypeTextarea');
 		foreach($text_fields as $text_field) {
 			$f->addOption($text_field->id, $text_field->name);
 		}
