@@ -1,0 +1,204 @@
+<?php namespace ProcessWire;
+
+/**
+ *
+ * Page Field Info
+ *
+ * @author Robin Sallis
+ *
+ * ProcessWire 3.x
+ * Copyright (C) 2011 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class PageFieldInfo extends WireData implements Module {
+
+	/**
+	 * Module information
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'Page Field Info',
+			'summary' => 'Adds information about options in Page Reference fields.',
+			'version' => '0.1.0',
+			'author' => 'Robin Sallis',
+			'href' => 'https://github.com/Toutouwai/PageFieldInfo',
+			'icon' => 'info',
+			'autoload' => true,
+			'requires' => 'ProcessWire>=3.0.61, AdminThemeUikit',
+		);
+	}
+
+	/**
+	 * Ready
+	 */
+	public function ready() {
+		$this->addHookAfter('InputfieldPage::renderReadyHook', $this, 'addInfoTooltipData');
+		$this->addHookAfter('InputfieldPage::render', $this, 'append_infoMarkup');
+		$this->addHookAfter('InputfieldPage::getConfigInputfields', $this, 'addConfigInputfields');
+	}
+
+	/**
+	 * Add info tooltip data to options
+	 *
+	 * @param HookEvent $event
+	 */
+	protected function addInfoTooltipData(HookEvent $event) {
+		/* @var InputfieldPage $inputfield_page */
+		$inputfield_page = $event->object;
+		// Return early if info options not activated
+		if(!$inputfield_page->add_info_tooltips && !$inputfield_page->append_info) return;
+		// Get the inputfield used for the Page Reference field
+		$inputfield = $inputfield_page->getInputfield();
+		// Return early if not a supported input type
+		if(!$inputfield instanceof InputfieldSelect) return;
+		// Get the field associated with the inputfield
+		/* @var FieldtypePage $field */
+		$field = $inputfield_page->hasField;
+		// Is this a select-type inputfield?
+		$is_select_type = in_array($inputfield->className, ['InputfieldSelect', 'InputfieldSelectMultiple', 'InputfieldAsmSelect']);
+
+		// Add tooltips
+		if($inputfield_page->add_info_tooltips) {
+			// Get the existing options
+			$options = $inputfield->options;
+			// Add the options back with attributes
+			foreach($options as $value => $label) {
+				// Get the page for this option
+				$p = $this->wire('pages')->get($value);
+				// Determine the attributes to add to the option
+				$attributes = array();
+				$info = $this->getPageInfo($p, $inputfield_page, $field);
+				if($info) {
+					if(!$is_select_type) $attributes['data-uk-tooltip'] = "title: $info";
+					$attributes['data-info'] = $info;
+				}
+				// Add the option along with any info attributes
+				$inputfield->addOptionAttributes($value, $attributes);
+			}
+		}
+
+		// Add CSS & JS assets
+		if($inputfield_page->append_info) {
+			$config = $this->wire('config');
+			$module_info = $this->getModuleInfo();
+			$version = $module_info['version'];
+			$config->styles->add($config->urls->{$this} . "{$this}.css?v={$version}");
+			$config->scripts->add($config->urls->{$this} . "{$this}.js?v={$version}");
+		}
+
+		// Add a class to the inputfield to identify that it has option info added
+		$inputfield_page->wrapClass('has-pfi-info');
+		// Add a class to distinguish select-type inputfields
+		if($is_select_type) $inputfield_page->wrapClass('pfi-select');
+		// Add a class to identify "single" fields
+		if($field && $field->derefAsPage === 0) $inputfield_page->wrapClass('pfi-multiple');
+	}
+
+	/**
+	 * Add info tooltip data to options
+	 *
+	 * @param HookEvent $event
+	 */
+	protected function append_infoMarkup(HookEvent $event) {
+		/* @var InputfieldPage $inputfield_page */
+		$inputfield_page = $event->object;
+		// Return early if append info option not activated
+		if(!$inputfield_page->append_info) return;
+		// Get the inputfield used for the Page Reference field
+		$inputfield = $inputfield_page->getInputfield();
+		// Return early if not a supported input type
+		if(!$inputfield instanceof InputfieldSelect) return;
+		// Get the field associated with the inputfield
+		/* @var FieldtypePage $field */
+		$field = $inputfield_page->hasField;
+		$info_out = '';
+		// Get the inputfield value
+		$value = $inputfield->value;
+		if($value) {
+			// Standardise to int array
+			$value = $this->wire('sanitizer')->intArray($value);
+			foreach($value as $id) {
+				// Get the page for this option
+				$p = $this->wire('pages')->get($id);
+				$info = $this->getPageInfo($p, $inputfield_page, $field);
+				// Add info to output
+				if($info) {
+					// Add label prefix if this is a "multiple" field
+					if($field && $field->derefAsPage === 0) $info = $inputfield_page->getPageLabel($p) . ': ' . $info;
+					$info_out .= "<div class='pfi-info-item'>$info</div>";
+				}
+			}
+		}
+		// Add markup to inputfield
+		$event->return .= "<div class='pfi-option-info'>$info_out</div>";
+	}
+
+	/**
+	 * Get info for a page
+	 *
+	 * @param Page $page
+	 * @param InputfieldPage $inputfield
+	 * @param Field $field
+	 * @return string
+	 */
+	public function ___getPageInfo(Page $page, InputfieldPage $inputfield, Field $field) {
+		return $page->{$inputfield->info_field};
+	}
+
+	/**
+	 * Add config inputfields to InputfieldPage
+	 *
+	 * @param HookEvent $event
+	 */
+	protected function addConfigInputfields(HookEvent $event) {
+		$inputfield = $event->object;
+		$wrapper = $event->return;
+		$modules = $this->wire('modules');
+
+		/* @var InputfieldFieldset $f */
+		$fs = $modules->InputfieldFieldset;
+		$fs->name = 'pfi_config';
+		$fs->label = $this->_('Page Field Info');
+		$fs->icon = 'info';
+		if(!$inputfield->add_info_tooltips && !$inputfield->append_info) $fs->collapsed = Inputfield::collapsedYes;
+		$wrapper->add($fs);
+
+		/* @var InputfieldCheckbox $f */
+		$f = $modules->InputfieldCheckbox;
+		$f_name = 'add_info_tooltips';
+		$f->name = $f_name;
+		$f->label = $this->_('Add info tooltips to options');
+		$f->checked = $inputfield->$f_name === 1 ? 'checked' : '';
+		$f->columnWidth = 25;
+		$fs->add($f);
+
+		/* @var InputfieldCheckbox $f */
+		$f = $modules->InputfieldCheckbox;
+		$f_name = 'append_info';
+		$f->name = $f_name;
+		$f->label = $this->_('Append info about selected options');
+		$f->checked = $inputfield->$f_name === 1 ? 'checked' : '';
+		$f->columnWidth = 25;
+		$fs->add($f);
+
+		/* @var InputfieldSelect $f */
+		$f = $modules->InputfieldSelect;
+		$f_name = 'info_field';
+		$f->name = $f_name;
+		$f->label = $this->_('Info field');
+		$f->description = $this->_('Text field that will contain information about the page.');
+		$text_fields = $this->wire('fields')->find('type=FieldtypeText');
+		foreach($text_fields as $text_field) {
+			$f->addOption($text_field->id, $text_field->name);
+		}
+		$f->value = $inputfield->$f_name;
+		$f->columnWidth = 50;
+		$fs->add($f);
+	}
+
+}
