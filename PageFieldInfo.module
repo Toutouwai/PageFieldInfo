@@ -24,7 +24,7 @@ class PageFieldInfo extends WireData implements Module {
 		return array(
 			'title' => 'Page Field Info',
 			'summary' => 'Adds information about options in Page Reference fields.',
-			'version' => '0.1.1',
+			'version' => '0.1.2',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/PageFieldInfo',
 			'icon' => 'info',
@@ -37,17 +37,17 @@ class PageFieldInfo extends WireData implements Module {
 	 * Ready
 	 */
 	public function ready() {
-		$this->addHookAfter('InputfieldPage::renderReadyHook', $this, 'addInfoTooltipData');
-		$this->addHookAfter('InputfieldPage::render', $this, 'append_infoMarkup');
+		$this->addHookAfter('InputfieldPage::renderReadyHook', $this, 'addInfoData');
+		$this->addHookAfter('InputfieldPage::render', $this, 'appendInfoMarkup');
 		$this->addHookAfter('InputfieldPage::getConfigInputfields', $this, 'addConfigInputfields');
 	}
 
 	/**
-	 * Add info tooltip data to options
+	 * Add info data to options
 	 *
 	 * @param HookEvent $event
 	 */
-	protected function addInfoTooltipData(HookEvent $event) {
+	protected function addInfoData(HookEvent $event) {
 		/* @var InputfieldPage $inputfield_page */
 		$inputfield_page = $event->object;
 		// Return early if info options not activated
@@ -62,27 +62,26 @@ class PageFieldInfo extends WireData implements Module {
 		// Is this a select-type inputfield?
 		$is_select_type = in_array($inputfield->className, ['InputfieldSelect', 'InputfieldSelectMultiple', 'InputfieldAsmSelect']);
 
-		// Add tooltips
-		if($inputfield_page->add_info_tooltips) {
-			// Get the existing options
-			$options = $inputfield->options;
-			// Add the options back with attributes
-			foreach($options as $value => $label) {
-				// Get the page for this option
-				$p = $this->wire('pages')->get($value);
-				// Determine the attributes to add to the option
-				$attributes = array();
-				$info = $this->getPageInfo($p, $inputfield_page, $field);
-				if($info) {
-					if(!$is_select_type) $attributes['data-uk-tooltip'] = "title: $info";
-					$attributes['data-info'] = $info;
-				}
-				// Add the option along with any info attributes
-				$inputfield->addOptionAttributes($value, $attributes);
+		// Add data attributes
+		// Get the existing options
+		$options = $inputfield->options;
+		// Add the options back with attributes
+		foreach($options as $value => $label) {
+			// Get the page for this option
+			$p = $this->wire('pages')->get($value);
+			// Determine the attributes to add to the option
+			$attributes = array();
+			$info = $this->getPageInfo($p, $inputfield_page, $field);
+			if($info) {
+				// Add tooltip if not a select type and tooltip option is activated
+				if(!$is_select_type && $inputfield_page->add_info_tooltips) $attributes['data-uk-tooltip'] = "title: $info";
+				$attributes['data-info'] = $info;
 			}
+			// Add the option along with any info attributes
+			$inputfield->addOptionAttributes($value, $attributes);
 		}
 
-		// Add CSS & JS assets
+		// Add CSS & JS assets if append info option is activated
 		if($inputfield_page->append_info) {
 			$config = $this->wire('config');
 			$module_info = $this->getModuleInfo();
@@ -104,7 +103,7 @@ class PageFieldInfo extends WireData implements Module {
 	 *
 	 * @param HookEvent $event
 	 */
-	protected function append_infoMarkup(HookEvent $event) {
+	protected function appendInfoMarkup(HookEvent $event) {
 		/* @var InputfieldPage $inputfield_page */
 		$inputfield_page = $event->object;
 		// Return early if append info option not activated
@@ -192,9 +191,11 @@ class PageFieldInfo extends WireData implements Module {
 		$f->name = $f_name;
 		$f->label = $this->_('Info field');
 		$f->description = $this->_('Field that will contain information about the page.');
-		$text_fields = $this->wire('fields')->find('type=FieldtypeText|FieldtypeTextarea');
-		foreach($text_fields as $text_field) {
-			$f->addOption($text_field->id, $text_field->name);
+		$info_fields = $this->wire('fields')->find('type=FieldtypeText|FieldtypeTextarea');
+		foreach($info_fields as $info_field) {
+			// Skip CKEditor fields
+			if($info_field->inputfieldClass && $info_field->inputfieldClass == 'InputfieldCKEditor') continue;
+			$f->addOption($info_field->id, $info_field->name);
 		}
 		$f->value = $inputfield->$f_name;
 		$f->columnWidth = 50;
