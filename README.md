@@ -37,7 +37,7 @@ In the Input tab of the settings for a Page Reference field...
 
 ### Hook
 
-In most cases the "Info field" will supply the text for the tooltips and appended info, but for advanced usages you can hook  `PageFieldInfo::getPageInfo()` to return the text. For example:
+In most cases the "Info field" will supply the text for the tooltips and appended info, but for advanced usages you can hook  `PageFieldInfo::getPageInfo()` to return the text.
 
 ```php
 $wire->addHookAfter('PageFieldInfo::getPageInfo', function(HookEvent $event) {

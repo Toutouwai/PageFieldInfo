@@ -24,7 +24,7 @@ class PageFieldInfo extends WireData implements Module {
 		return array(
 			'title' => 'Page Field Info',
 			'summary' => 'Adds information about options in Page Reference fields.',
-			'version' => '0.1.2',
+			'version' => '0.1.3',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/PageFieldInfo',
 			'icon' => 'info',
@@ -128,13 +128,28 @@ class PageFieldInfo extends WireData implements Module {
 				// Add info to output
 				if($info) {
 					// Add label prefix if this is a "multiple" field
-					if($field && $field->derefAsPage === 0) $info = $inputfield_page->getPageLabel($p) . ': ' . $info;
+					if($field && $field->derefAsPage === 0) {
+						$info = $this->getPageLabel($p, $inputfield_page, $field) . $info;
+					}
 					$info_out .= "<div class='pfi-info-item'>$info</div>";
 				}
 			}
 		}
 		// Add markup to inputfield
 		$event->return .= "<div class='pfi-option-info'>$info_out</div>";
+	}
+
+	/**
+	 * Get page label
+	 *
+	 * @param Page $page
+	 * @param InputfieldPage $inputfield
+	 * @param Field $field
+	 * @return string
+	 */
+	public function ___getPageLabel(Page $page, InputfieldPage $inputfield, Field $field) {
+		$label = $inputfield->getPageLabel($page);
+		return "<span class='pfi-page-label'>{$label}:</span> ";
 	}
 
 	/**
@@ -146,7 +161,7 @@ class PageFieldInfo extends WireData implements Module {
 	 * @return string
 	 */
 	public function ___getPageInfo(Page $page, InputfieldPage $inputfield, Field $field) {
-		return $page->{$inputfield->info_field};
+		return $page->getFormatted($inputfield->info_field);
 	}
 
 	/**
